@@ -176,6 +176,10 @@ Function Sharepoint_Mass_File_Upload{
             # https://sharepoint.stackexchange.com/questions/151074/list-files-in-a-specific-folder-in-a-document-library
             # https://stackoverflow.com/questions/63825327/add-pnpfolder-fails-for-folder-names-containing-a-hash
             
+            Write-Host "Name" : $string_obj_item_short_name
+            Write-Host "Type" : "Folder"
+            Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)  
+            
 
             $web_obj_current_pnp_context_web = $pnpcontext_obj_current_pnp_context.Web
             $pnpcontext_obj_current_pnp_context.Load($web_obj_current_pnp_context_web)
@@ -192,9 +196,7 @@ Function Sharepoint_Mass_File_Upload{
             # Add-PnPFolder -Name $string_obj_item_short_name -Folder $string_obj_sharepoint_folder_site_full_relative_url > $null
             
             
-            Write-Host "Name" : $string_obj_item_short_name
-            Write-Host "Type" : "Folder"
-            Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)            
+                      
             Write-Host -ForegroundColor Green "Result" : "Folder Created."
             Write-Host "---------------------------" 
             
@@ -209,7 +211,11 @@ Function Sharepoint_Mass_File_Upload{
             
             # https://sharepoint.stackexchange.com/questions/159085/upload-files-to-sharepoint-intranet-site-using-powershell
             # https://www.sharepointdiary.com/2018/01/sharepoint-online-upload-file-to-folder-using-powershell.html\
+            # https://www.sharepointdiary.com/2020/05/upload-large-files-to-sharepoint-online-using-powershell.html
             
+            Write-Host "Name" : $string_obj_item_short_name
+            Write-Host "Type" : "File"
+            Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)
             
             #Get the Target Folder to upload
             $web_obj_current_pnp_context_web = $pnpcontext_obj_current_pnp_context.Web
@@ -227,11 +233,7 @@ Function Sharepoint_Mass_File_Upload{
             $string_obj_sharepoint_site_url = $string_obj_sharepoint_folder_site_full_relative_url+"/"+$string_obj_item_short_name
          
             #Upload the File to SharePoint Library Folder
-            $file_creation_information_obj_sharepoint_file = New-Object Microsoft.SharePoint.Client.FileCreationInformation
-            $file_creation_information_obj_sharepoint_file.Overwrite = $true
-            $file_creation_information_obj_sharepoint_file.ContentStream = $stream_obj_source_file_stream
-            $file_creation_information_obj_sharepoint_file.URL = $string_obj_sharepoint_site_url
-            
+
             # https://www.sharepointdiary.com/2016/10/check-if-file-exists-in-document-library-using-powershell-csom.html
             $array_obj_file_site_relative_url = $string_obj_sharepoint_folder_site_full_relative_url.split("/")
             
@@ -242,18 +244,30 @@ Function Sharepoint_Mass_File_Upload{
             $sharepoint_file_obj_target_file = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
             
             if ($sharepoint_file_obj_target_file) {
-                $sharepoint_file_obj_target_file.CheckOut()
+                try {
+                    $sharepoint_file_obj_target_file.CheckOut()
+                } catch {
+                }
             }
             
-            $sharepoint_file_obj_uploaded_file = $folder_obj_target_sharepoint_folder.Files.Add($file_creation_information_obj_sharepoint_file)  
-            $pnpcontext_obj_current_pnp_context.ExecuteQuery()  
+            if ($pnpcontext_obj_current_pnp_context.HasPendingRequest) {
+                try {
+                    $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+                } catch {
+                }
+            }
+            
+            
+            $pnpcontext_obj_current_pnp_context.RequestTimeout = [System.Threading.Timeout]::Infinite
+            [Microsoft.SharePoint.Client.File]::SaveBinaryDirect($pnpcontext_obj_current_pnp_context, $string_obj_sharepoint_site_url, $stream_obj_source_file_stream,$true)
                     
+
+            $sharepoint_file_obj_uploaded_file = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
+            
             $sharepoint_file_obj_uploaded_file.CheckIn("File Checked In.",[Microsoft.SharePoint.Client.CheckinType]::MinorCheckIn)
             $pnpcontext_obj_current_pnp_context.ExecuteQuery()
             
-            Write-Host "Name" : $string_obj_item_short_name
-            Write-Host "Type" : "File"
-            Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)
+            
             Write-Host -ForegroundColor Green "Result" : "File Uploaded and Checked In."
             Write-Host "---------------------------" 
         }
