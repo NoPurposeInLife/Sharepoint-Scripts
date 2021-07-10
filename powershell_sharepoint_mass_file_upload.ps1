@@ -213,63 +213,194 @@ Function Sharepoint_Mass_File_Upload{
             # https://www.sharepointdiary.com/2018/01/sharepoint-online-upload-file-to-folder-using-powershell.html\
             # https://www.sharepointdiary.com/2020/05/upload-large-files-to-sharepoint-online-using-powershell.html
             
-            Write-Host "Name" : $string_obj_item_short_name
-            Write-Host "Type" : "File"
-            Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)
+            [bool] $boolean_obj_upload_status = $false
             
-            #Get the Target Folder to upload
-            $web_obj_current_pnp_context_web = $pnpcontext_obj_current_pnp_context.Web
-            $pnpcontext_obj_current_pnp_context.Load($web_obj_current_pnp_context_web)
-            
-            $folder_obj_target_sharepoint_folder = $web_obj_current_pnp_context_web.GetFolderByServerRelativePath([Microsoft.SharePoint.Client.ResourcePath]::FromDecodedUrl($string_obj_sharepoint_folder_site_full_relative_url))
-            
-            $pnpcontext_obj_current_pnp_context.Load($folder_obj_target_sharepoint_folder)
-            $pnpcontext_obj_current_pnp_context.ExecuteQuery()
-            
-            
-            #Get the source file from disk
-            $stream_obj_source_file_stream = ([System.IO.FileInfo] ($f)).OpenRead()
-            #Get File Name from source file path
-            $string_obj_sharepoint_site_url = $string_obj_sharepoint_folder_site_full_relative_url+"/"+$string_obj_item_short_name
-         
-            #Upload the File to SharePoint Library Folder
-
-            # https://www.sharepointdiary.com/2016/10/check-if-file-exists-in-document-library-using-powershell-csom.html
-            $array_obj_file_site_relative_url = $string_obj_sharepoint_folder_site_full_relative_url.split("/")
-            
-            $string_obj_file_site_relative_url_front = ("/" + $array_obj_file_site_relative_url[1] +"/" + $array_obj_file_site_relative_url[2])
-
-            $string_obj_file_site_relative_url = $string_obj_sharepoint_site_url.replace($string_obj_file_site_relative_url_front,"")
-            
-            $sharepoint_file_obj_target_file = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
-            
-            if ($sharepoint_file_obj_target_file) {
-                try {
-                    $sharepoint_file_obj_target_file.CheckOut()
-                } catch {
-                }
-            }
-            
-            if ($pnpcontext_obj_current_pnp_context.HasPendingRequest) {
-                try {
-                    $pnpcontext_obj_current_pnp_context.ExecuteQuery()
-                } catch {
-                }
-            }
-            
-            
-            $pnpcontext_obj_current_pnp_context.RequestTimeout = [System.Threading.Timeout]::Infinite
-            [Microsoft.SharePoint.Client.File]::SaveBinaryDirect($pnpcontext_obj_current_pnp_context, $string_obj_sharepoint_site_url, $stream_obj_source_file_stream,$true)
+            while (-not $boolean_obj_upload_status) {
+                try {                    
+                    # Get Current PNP Context
+                    $pnpcontext_obj_current_pnp_context = Get-PnPContext
                     
+                    
+                    Write-Host "Name" : $string_obj_item_short_name
+                    Write-Host "Type" : "File"
+                    Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)
+                    
+                    #Get the Target Folder to upload
+                    $web_obj_current_pnp_context_web = $pnpcontext_obj_current_pnp_context.Web
+                    $pnpcontext_obj_current_pnp_context.Load($web_obj_current_pnp_context_web)
+                    
+                    $folder_obj_target_sharepoint_folder = $web_obj_current_pnp_context_web.GetFolderByServerRelativePath([Microsoft.SharePoint.Client.ResourcePath]::FromDecodedUrl($string_obj_sharepoint_folder_site_full_relative_url))
+                    
+                    $pnpcontext_obj_current_pnp_context.Load($folder_obj_target_sharepoint_folder)
+                    $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+                    
+                    
+                    
+                    #Get File Name from source file path
+                    $string_obj_sharepoint_site_url = $string_obj_sharepoint_folder_site_full_relative_url+"/"+$string_obj_item_short_name
+                 
+                    #Upload the File to SharePoint Library Folder
 
-            $sharepoint_file_obj_uploaded_file = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
-            
-            $sharepoint_file_obj_uploaded_file.CheckIn("File Checked In.",[Microsoft.SharePoint.Client.CheckinType]::MinorCheckIn)
-            $pnpcontext_obj_current_pnp_context.ExecuteQuery()
-            
-            
-            Write-Host -ForegroundColor Green "Result" : "File Uploaded and Checked In."
-            Write-Host "---------------------------" 
+                    # https://www.sharepointdiary.com/2016/10/check-if-file-exists-in-document-library-using-powershell-csom.html
+                    $array_obj_file_site_relative_url = $string_obj_sharepoint_folder_site_full_relative_url.split("/")
+                    
+                    $string_obj_file_site_relative_url_front = ("/" + $array_obj_file_site_relative_url[1] +"/" + $array_obj_file_site_relative_url[2])
+
+                    $string_obj_file_site_relative_url = $string_obj_sharepoint_site_url.replace($string_obj_file_site_relative_url_front,"")
+                    
+                    $sharepoint_file_obj_target_file = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
+                    
+                    if ($sharepoint_file_obj_target_file) {
+                        try {
+                            $sharepoint_file_obj_target_file.CheckOut()
+                        } catch {
+                        }
+                    }
+                    
+                    if ($pnpcontext_obj_current_pnp_context.HasPendingRequest) {
+                        try {
+                            $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+                        } catch {
+                        }
+                    }
+                    
+                    
+                    $pnpcontext_obj_current_pnp_context.RequestTimeout = [System.Threading.Timeout]::Infinite
+                    
+                    # Calculate block size in bytes.
+                    $BlockSize = 9 * 1024 * 1024
+                    
+                    
+                    # Get the size of the file.
+                    $FileSize = (Get-Item -LiteralPath $string_obj_item_full_path).Length
+                       
+                    if ($FileSize -le $BlockSize)
+                    {
+                        # Use regular approach.
+                        #Get the source file from disk
+                        $stream_obj_source_file_stream = ([System.IO.FileInfo] ($f)).OpenRead()
+                        [Microsoft.SharePoint.Client.File]::SaveBinaryDirect($pnpcontext_obj_current_pnp_context, $string_obj_sharepoint_site_url, $stream_obj_source_file_stream,$true)
+                    } else {
+                        # https://sharepoint.stackexchange.com/questions/149095/uploading-a-large-file-to-office-365-via-csom-powershell
+                        # Use large file upload approach.
+                        
+                        # File object.
+                        [Microsoft.SharePoint.Client.File] $upload
+                        
+                        # Each sliced upload requires a unique ID.
+                        $UploadId = [GUID]::NewGuid()
+
+                        # Get the name of the file.
+                        $UniqueFileName = [System.IO.Path]::GetFileName($string_obj_item_full_path)
+
+                        # Get the folder to upload into. 
+                        $Docs = $web_obj_current_pnp_context_web.GetFolderByServerRelativePath([Microsoft.SharePoint.Client.ResourcePath]::FromDecodedUrl($string_obj_sharepoint_folder_site_full_relative_url))
+
+                        $BytesUploaded = $null
+                        $Fs = $null
+                        Try {
+                            $Fs = [System.IO.File]::Open($string_obj_item_full_path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                            
+                            $br = New-Object System.IO.BinaryReader($Fs)
+                            $buffer = New-Object System.Byte[]($BlockSize)
+                            $lastBuffer = $null
+                            $fileoffset = 0
+                            $totalBytesRead = 0
+                            $bytesRead
+                            $first = $true
+                            $last = $false
+
+                            # Read data from file system in blocks. 
+                            while(($bytesRead = $br.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                                $totalBytesRead = $totalBytesRead + $bytesRead
+
+                                # You've reached the end of the file.
+                                if($totalBytesRead -eq $FileSize) {
+                                    $last = $true
+                                    # Copy to a new buffer that has the correct size.
+                                    $lastBuffer = New-Object System.Byte[]($bytesRead)
+                                    [array]::Copy($buffer, 0, $lastBuffer, 0, $bytesRead)
+                                }
+
+                                If($first)
+                                {
+                                    $ContentStream = New-Object System.IO.MemoryStream
+                                    # Add an empty file.
+                                    $fileInfo = New-Object Microsoft.SharePoint.Client.FileCreationInformation
+                                    $fileInfo.ContentStream = $ContentStream
+                                    $fileInfo.Url = $UniqueFileName
+                                    $fileInfo.Overwrite = $true
+                                    $Upload = $Docs.Files.Add($fileInfo)
+                                    $pnpcontext_obj_current_pnp_context.Load($Upload)
+                                      
+                                    # Start upload by uploading the first slice.
+                                    $s = [System.IO.MemoryStream]::new($buffer) 
+
+                                    # Call the start upload method on the first slice.
+                                    $BytesUploaded = $Upload.StartUpload($UploadId, $s)
+                                    $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+
+                                    # fileoffset is the pointer where the next slice will be added.
+                                    $fileoffset = $BytesUploaded.Value
+
+                                    # You can only start the upload once.
+                                    $first = $false
+                                }
+                                Else
+                                {
+                                    # Get a reference to your file.
+                                    $Upload = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
+                                                                        
+                                    If($last) {
+                                        # Is this the last slice of data?
+                                        $s = [System.IO.MemoryStream]::new($lastBuffer)
+
+                                        # End sliced upload by calling FinishUpload.
+                                        $Upload = $Upload.FinishUpload($UploadId, $fileoffset, $s)
+                                        $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+
+                                    }
+                                    else {
+                                        $s = [System.IO.MemoryStream]::new($buffer)
+
+                                        # Continue sliced upload.
+                                        $BytesUploaded = $Upload.ContinueUpload($UploadId, $fileoffset, $s)
+                                        $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+
+                                        # Update fileoffset for the next slice.
+                                        $fileoffset = $BytesUploaded.Value
+                                    }
+                                }
+
+                            }  #// while ((bytesRead = br.Read(buffer, 0, buffer.Length)) > 0)
+                        }
+                        Catch {
+                            Write-Host $_.Exception.Message -ForegroundColor Red
+                        }
+                        Finally {
+                            if ($Fs -ne $null)
+                            {
+                                $Fs.Dispose()
+                            }
+                        }
+                    
+                    }
+                    
+                    $sharepoint_file_obj_uploaded_file = Get-PnPFile -Url $string_obj_file_site_relative_url  -ErrorAction SilentlyContinue
+                    
+                    $sharepoint_file_obj_uploaded_file.CheckIn("File Checked In.",[Microsoft.SharePoint.Client.CheckinType]::MinorCheckIn)
+                    $pnpcontext_obj_current_pnp_context.ExecuteQuery()
+                    
+                    
+                    Write-Host -ForegroundColor Green "Result" : "File Uploaded and Checked In."
+                    Write-Host "---------------------------" 
+                    $boolean_obj_upload_status = $true
+                
+                    
+                } catch {
+                    echo $_.Exception|format-list -force
+                }
+            }
         }
     }
       
