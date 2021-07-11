@@ -290,7 +290,7 @@ Function Sharepoint_Mass_File_Upload{
                     
                     
                     # Get the size of the file.
-                    $FileSize = (Get-Item -LiteralPath $string_obj_item_full_path).Length
+                    $FileSize = (Get-Item -LiteralPath $string_obj_item_full_path).Length > $null
                        
                     if ($FileSize -le $BlockSize)
                     {
@@ -364,7 +364,7 @@ Function Sharepoint_Mass_File_Upload{
                                     $pnpcontext_obj_current_pnp_context.Load($Upload)
                                       
                                     # Start upload by uploading the first slice.
-                                    $s = [System.IO.MemoryStream]::new($buffer) 
+                                    $s = [System.IO.MemoryStream]::new($buffer)
 
                                     # Call the start upload method on the first slice.
                                     $BytesUploaded = $Upload.StartUpload($UploadId, $s)
