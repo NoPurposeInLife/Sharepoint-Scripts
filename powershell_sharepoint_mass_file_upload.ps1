@@ -165,11 +165,18 @@ Function Sharepoint_Mass_File_Upload{
     )
         
     # https://stackoverflow.com/questions/39825440/check-if-a-path-is-a-folder-or-a-file-in-powershell
+    #$item_obj_files_and_folders = Get-ChildItem -LiteralPath $string_obj_local_directory_full_path -Force -Include *
+    
+    $string_obj_url_decoded_local_directory_full_path = [Microsoft.SharePoint.Client.Utilities.HttpUtility]::UrlKeyValueDecode($string_obj_local_directory_full_path)
+    
     $item_obj_files_and_folders = Get-ChildItem -LiteralPath $string_obj_local_directory_full_path -Force -Include *
+    
+    # $item_obj_files_and_folders = Get-ChildItem -LiteralPath $string_obj_url_decoded_local_directory_full_path -Force -Include *
 
     foreach ($f in $item_obj_files_and_folders) {
         $string_obj_item_full_path = $f.FullName
         $string_obj_item_short_name = $f.Name
+        # $string_obj_item_short_name = [Microsoft.SharePoint.Client.Utilities.HttpUtility]::UrlKeyValueEncode($f.Name)
         
         if (Test-Path -LiteralPath $string_obj_item_full_path -PathType Container) {
             # https://veronicageek.com/microsoft-365/sharepoint-online/create-a-folder-structure-in-sharepoint-online-using-powershell-pnp-from-file-shares/2019/02/
@@ -181,6 +188,7 @@ Function Sharepoint_Mass_File_Upload{
             Write-Host "Sharepoint Path" : ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)  
             
 
+            
             $web_obj_current_pnp_context_web = $pnpcontext_obj_current_pnp_context.Web
             $pnpcontext_obj_current_pnp_context.Load($web_obj_current_pnp_context_web)
                         
@@ -190,8 +198,18 @@ Function Sharepoint_Mass_File_Upload{
             $pnpcontext_obj_current_pnp_context.Load($folder_obj_target_sharepoint_folder)
             $pnpcontext_obj_current_pnp_context.ExecuteQuery()
        
-            $folder_obj_target_sharepoint_folder.Folders.Add($string_obj_item_short_name) > $null
-            $folder_obj_target_sharepoint_folder.Context.ExecuteQuery()
+            # $folder_obj_target_sharepoint_folder.Folders.Add($string_obj_item_short_name) > $null
+            
+            
+            # Add-PnPFolder -name $string_obj_item_short_name.replace('%','`%') -folder $folder_obj_target_sharepoint_folder
+            
+
+            try {
+                $folder_obj_target_sharepoint_folder.AddSubFolderUsingPath([Microsoft.SharePoint.Client.ResourcePath]::FromDecodedUrl($string_obj_item_short_name)) > $null
+                $folder_obj_target_sharepoint_folder.Context.ExecuteQuery()
+            } catch {
+            }
+
 
             # Add-PnPFolder -Name $string_obj_item_short_name -Folder $string_obj_sharepoint_folder_site_full_relative_url > $null
             
@@ -199,12 +217,12 @@ Function Sharepoint_Mass_File_Upload{
                       
             Write-Host -ForegroundColor Green "Result" : "Folder Created."
             Write-Host "---------------------------" 
-            
+
             $string_obj_sharepoint_folder_site_new_full_relative_url = ($string_obj_sharepoint_folder_site_full_relative_url + '/' + $string_obj_item_short_name)
                         
             
             $string_obj_local_directory_new_full_path = ($string_obj_local_directory_full_path + "\" + $string_obj_item_short_name)
-                        
+            
             Sharepoint_Mass_File_Upload -pnpcontext_obj_current_pnp_context $pnpcontext_obj_current_pnp_context -Sharepoint_Login_Email $Sharepoint_Login_Email -string_obj_sharepoint_folder_site_full_relative_url $string_obj_sharepoint_folder_site_new_full_relative_url -string_obj_local_directory_full_path $string_obj_local_directory_new_full_path
         } else {            
         
@@ -230,10 +248,10 @@ Function Sharepoint_Mass_File_Upload{
                     $pnpcontext_obj_current_pnp_context.Load($web_obj_current_pnp_context_web)
                     
                     $folder_obj_target_sharepoint_folder = $web_obj_current_pnp_context_web.GetFolderByServerRelativePath([Microsoft.SharePoint.Client.ResourcePath]::FromDecodedUrl($string_obj_sharepoint_folder_site_full_relative_url))
+
                     
                     $pnpcontext_obj_current_pnp_context.Load($folder_obj_target_sharepoint_folder)
                     $pnpcontext_obj_current_pnp_context.ExecuteQuery()
-                    
                     
                     
                     #Get File Name from source file path
@@ -278,8 +296,20 @@ Function Sharepoint_Mass_File_Upload{
                     {
                         # Use regular approach.
                         #Get the source file from disk
+                        
+                        # https://github.com/SharePoint/sp-dev-docs/blob/master/docs/solution-guidance/supporting-and-in-file-and-folder-with-the-resourcepath-api.md
                         $stream_obj_source_file_stream = ([System.IO.FileInfo] ($f)).OpenRead()
-                        [Microsoft.SharePoint.Client.File]::SaveBinaryDirect($pnpcontext_obj_current_pnp_context, $string_obj_sharepoint_site_url, $stream_obj_source_file_stream,$true)
+                        
+                        # [Microsoft.SharePoint.Client.File]::SaveBinaryDirect($pnpcontext_obj_current_pnp_context, $string_obj_sharepoint_site_url, $stream_obj_source_file_stream,$true)
+                        
+                        $fileAddParameters = New-Object Microsoft.SharePoint.Client.FileCollectionAddParameters
+                        $fileAddParameters.Overwrite = $true
+                        
+                        $folder_obj_target_sharepoint_folder.Files.AddUsingPath(([Microsoft.SharePoint.Client.ResourcePath]::FromDecodedUrl($string_obj_sharepoint_site_url)), $fileAddParameters , $stream_obj_source_file_stream) > $null
+                        $folder_obj_target_sharepoint_folder.Context.ExecuteQuery()
+
+                        
+                        
                     } else {
                         # https://sharepoint.stackexchange.com/questions/149095/uploading-a-large-file-to-office-365-via-csom-powershell
                         # Use large file upload approach.
@@ -416,6 +446,7 @@ Function Main{
     )
     
     try {  
+    
         # URL Decode Sharepoint URL
         $string_obj_sharepoint_site_list_full_url_decoded = URL_Decode_String -URL_Encoded_String $string_obj_sharepoint_site_list_full_url_encoded
         
