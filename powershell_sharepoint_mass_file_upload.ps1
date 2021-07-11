@@ -225,8 +225,6 @@ Function Sharepoint_Mass_File_Upload{
             
             Sharepoint_Mass_File_Upload -pnpcontext_obj_current_pnp_context $pnpcontext_obj_current_pnp_context -Sharepoint_Login_Email $Sharepoint_Login_Email -string_obj_sharepoint_folder_site_full_relative_url $string_obj_sharepoint_folder_site_new_full_relative_url -string_obj_local_directory_full_path $string_obj_local_directory_new_full_path
         } else {            
-        
-            
             # https://sharepoint.stackexchange.com/questions/159085/upload-files-to-sharepoint-intranet-site-using-powershell
             # https://www.sharepointdiary.com/2018/01/sharepoint-online-upload-file-to-folder-using-powershell.html\
             # https://www.sharepointdiary.com/2020/05/upload-large-files-to-sharepoint-online-using-powershell.html
@@ -290,7 +288,7 @@ Function Sharepoint_Mass_File_Upload{
                     
                     
                     # Get the size of the file.
-                    $FileSize = (Get-Item -LiteralPath $string_obj_item_full_path).Length > $null
+                    $FileSize = (Get-Item -LiteralPath $string_obj_item_full_path).Length
                        
                     if ($FileSize -le $BlockSize)
                     {
@@ -315,7 +313,7 @@ Function Sharepoint_Mass_File_Upload{
                         # Use large file upload approach.
                         
                         # File object.
-                        [Microsoft.SharePoint.Client.File] $upload
+                        [Microsoft.SharePoint.Client.File] $upload = $null
                         
                         # Each sliced upload requires a unique ID.
                         $UploadId = [GUID]::NewGuid()
@@ -328,6 +326,7 @@ Function Sharepoint_Mass_File_Upload{
 
                         $BytesUploaded = $null
                         $Fs = $null
+                        
                         Try {
                             $Fs = [System.IO.File]::Open($string_obj_item_full_path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
                             
@@ -336,20 +335,19 @@ Function Sharepoint_Mass_File_Upload{
                             $lastBuffer = $null
                             $fileoffset = 0
                             $totalBytesRead = 0
-                            $bytesRead
                             $first = $true
                             $last = $false
-
+                            
                             # Read data from file system in blocks. 
                             while(($bytesRead = $br.Read($buffer, 0, $buffer.Length)) -gt 0) {
                                 $totalBytesRead = $totalBytesRead + $bytesRead
-
+                                
                                 # You've reached the end of the file.
                                 if($totalBytesRead -eq $FileSize) {
                                     $last = $true
                                     # Copy to a new buffer that has the correct size.
                                     $lastBuffer = New-Object System.Byte[]($bytesRead)
-                                    [array]::Copy($buffer, 0, $lastBuffer, 0, $bytesRead)
+                                    [array]::Copy($buffer, 0, $lastBuffer, 0, $bytesRead) > $null
                                 }
 
                                 If($first)
@@ -410,7 +408,7 @@ Function Sharepoint_Mass_File_Upload{
                         Finally {
                             if ($Fs -ne $null)
                             {
-                                $Fs.Dispose()
+                                $Fs.Dispose() > $null
                             }
                         }
                     
