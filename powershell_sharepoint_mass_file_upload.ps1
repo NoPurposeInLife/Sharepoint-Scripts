@@ -285,8 +285,8 @@ Function Sharepoint_Mass_File_Upload{
                 
                 
                 # Get the size of the file.
-                $FileSize = (Get-Item -LiteralPath $string_obj_item_full_path).Length
-                   
+                $FileSize = ($f).Length
+                
                 if ($FileSize -le $BlockSize)
                 {
                     # Use regular approach.
