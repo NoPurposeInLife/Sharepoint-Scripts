@@ -212,7 +212,7 @@ Function Main{
 
 #----------------[ Imports ]---------------
 if (!(Get-Module "PnP.PowerShell")) {
-    Install-Module SharePointPnPPowerShellOnline
+    Install-Module SharePointPnPPowerShellOnline -Scope CurrentUser
 }
 Add-Type -AssemblyName System.Web
 
